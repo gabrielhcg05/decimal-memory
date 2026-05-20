@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Decimal">
+  <meta name="theme-color" content="#080808">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>Decimal Memory</title>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080808;
+      --fg:        #ffffff;
+      --dim:       rgba(255,255,255,0.25);
+      --dimmer:    rgba(255,255,255,0.12);
+      --green:     #6effa0;
+      --red:       #ff5c5c;
+      --mono:      'DM Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--sans);
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+
+    /* ── Scanlines ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 3px
+      );
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── Layout ── */
+    #app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 28px;
+      gap: 0;
+    }
+
+    /* ── Header ── */
+    #header {
+      font-family: var(--sans);
+      font-size: 11px;
+      letter-spacing: 6px;
+      color: var(--dim);
+      font-weight: 500;
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.1s forwards;
+    }
+
+    /* ── Selector ── */
+    #selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 44px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.2s forwards;
+    }
+
+    .sel-btn {
+      background: transparent;
+      border: 1px solid var(--dimmer);
+      color: rgba(255,255,255,0.4);
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 400;
+      padding: 13px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      outline: none;
+      -webkit-appearance: none;
+      line-height: 1;
+    }
+
+    .sel-btn.active {
+      border-color: rgba(255,255,255,0.55);
+      color: #fff;
+      background: rgba(255,255,255,0.07);
+      text-shadow: 0 0 12px rgba(255,255,255,0.8);
+    }
+
+    /* ── Digit display ── */
+    #display-wrap {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.3s forwards;
+    }
+
+    #constant-symbol {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 500;
+      margin-bottom: 14px;
+    }
+
+    #digits-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 58px;
+      gap: 1px;
+    }
+
+    .digit {
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 28px;
+      color: rgba(255,255,255,0.3);
+      transition: color 0.15s, font-size 0.15s, font-weight 0.15s, text-shadow 0.15s;
+      line-height: 1;
+    }
+
+    .digit.recent {
+      font-size: 38px;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 0 16px rgba(255,255,255,0.7);
+    }
+
+    .digit.correct-flash {
+      color: var(--green) !important;
+      text-shadow: 0 0 16px rgba(110,255,160,0.8) !important;
+    }
+
+    .digit.dot {
+      font-size: 30px;
+      color: rgba(255,255,255,0.5);
+      font-weight: 600;
+      margin: 0 1px 3px;
+    }
+
+    #cursor {
+      width: 16px;
+      height: 40px;
+      background: rgba(255,255,255,0.55);
+      border-radius: 2px;
+      margin-left: 2px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+      transition: background 0.2s, box-shadow 0.2s;
+      flex-shrink: 0;
+      animation: blink 1.1s ease-in-out infinite;
+    }
+
+    #cursor.error {
+      background: rgba(255,92,92,0.7);
+      box-shadow: 0 0 14px rgba(255,92,92,0.5);
+      animation: none;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    #position-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.2);
+      margin-top: 10px;
+    }
+
+    /* ── Shake animation ── */
+    @keyframes shake {
+      0%   { transform: translateX(0); }
+      15%  { transform: translateX(-10px); }
+      30%  { transform: translateX(10px); }
+      45%  { transform: translateX(-7px); }
+      60%  { transform: translateX(7px); }
+      75%  { transform: translateX(-4px); }
+      90%  { transform: translateX(4px); }
+      100% { transform: translateX(0); }
+    }
+
+    .shaking { animation: shake 0.42s ease; }
+
+    /* ── Input area ── */
+    #action-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100px;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.4s forwards;
+    }
+
+    /* Hidden real input — captures keyboard on mobile */
+    #real-input {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+    }
+
+    /* Visible tap target that opens keyboard */
+    #tap-target {
+      width: 68px;
+      height: 68px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #tap-target:active {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.35);
+    }
+
+    #tap-hint {
+      font-family: var(--sans);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.25);
+      margin-top: 10px;
+    }
+
+    /* ── Game over state ── */
+    #gameover {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      animation: fadeUp 0.35s ease forwards;
+    }
+
+    #gameover.visible { display: flex; }
+
+    #gameover-label {
+      font-family: var(--sans);
+      font-size: 13px;
+      letter-spacing: 4px;
+      color: var(--red);
+      font-weight: 600;
+    }
+
+    #gameover-detail {
+      font-family: var(--sans);
+      font-size: 15px;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.5px;
+    }
+
+    #gameover-detail strong {
+      font-family: var(--mono);
+      font-size: 26px;
+      color: #fff;
+      font-weight: 700;
+      text-shadow: 0 0 10px rgba(255,255,255,0.5);
+      margin-left: 6px;
+    }
+
+    #retry-btn {
+      margin-top: 20px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.7);
+      font-family: var(--sans);
+      font-size: 12px;
+      letter-spacing: 3px;
+      font-weight: 500;
+      padding: 12px 28px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-appearance: none;
+      outline: none;
+    }
+
+    #retry-btn:active {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    /* ── Scoreboard ── */
+    #scoreboard {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-top: 44px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.5s forwards;
+    }
+
+    .score-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 0 24px;
+    }
+
+    .score-value {
+      font-family: var(--mono);
+      font-size: 22px;
+      color: #fff;
+      font-weight: 400;
+      letter-spacing: 1px;
+    }
+
+    .score-label {
+      font-family: var(--sans);
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 400;
+      text-transform: uppercase;
+    }
+
+    .score-divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(255,255,255,0.1);
+    }
+
+    /* ── Install banner (iOS) ── */
+    #install-banner {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30,30,30,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 14px 20px;
+      width: calc(100% - 48px);
+      max-width: 360px;
+      z-index: 200;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      animation: slideUp 0.4s ease forwards;
+    }
+
+    #install-banner.show { display: block; }
+
+    #install-banner p {
+      font-family: var(--sans);
+      font-size: 13px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+
+    #install-banner p span {
+      color: #fff;
+      font-weight: 500;
+    }
+
+    #install-close {
+      position: absolute;
+      top: 10px;
+      right: 14px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.4);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">DECIMAL MEMORY</div>
+
+  <div id="selector">
+    <!-- filled by JS -->
+  </div>
+
+  <div id="display-wrap">
+    <div id="constant-symbol"></div>
+    <div id="digits-row">
+      <!-- filled by JS -->
+    </div>
+    <div id="position-label"></div>
+  </div>
+
+  <div id="action-area">
+    <!-- Input state -->
+    <div id="input-state">
+      <input id="real-input" type="number" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <div id="tap-target" onclick="focusInput()">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M11 2v18M2 11h18" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div id="tap-hint">TOQUE PARA DIGITAR</div>
+    </div>
+
+    <!-- Game over state -->
+    <div id="gameover">
+      <div id="gameover-label">INCORRETO</div>
+      <div id="gameover-detail">O dígito correto era <strong id="correct-digit-display"></strong></div>
+      <button id="retry-btn" onclick="resetGame()">TENTAR NOVAMENTE</button>
+    </div>
+  </div>
+
+  <div id="scoreboard">
+    <div class="score-cell">
+      <div class="score-value" id="score-pos">1º</div>
+      <div class="score-label">POSIÇÃO</div>
+    </div>
+    <div class="score-divider"></div>
+    <div class="score-cell">
+      <div class="score-value" id="score-streak">0</div>
+      <div class="score-label">STREAK</div>
+    </div>
+    <div class="score-divider"></div>
+    <div class="score-cell">
+      <div class="score-value" id="score-best">0</div>
+      <div class="score-label" id="score-best-label">RECORDE e</div>
+    </div>
+  </div>
+</div>
+
+<!-- iOS install banner -->
+<div id="install-banner">
+  <button id="install-close" onclick="dismissBanner()">×</button>
+  <p>Instale como app:</p>
+  <p>Toque em <span>Compartilhar ↑</span> e depois em <span>"Adicionar à Tela de Início"</span></p>
+</div>
+
+<script>
+// ─── Dados ───────────────────────────────────────────────────────────────────
+
+const CONSTANTS = [
+  { symbol: 'e',  digits: '2718281828459045235360287471352662497757247093699959574966967627' },
+  { symbol: 'π',  digits: '3141592653589793238462643383279502884197169399375105820974944592' },
+  { symbol: '√2', digits: '1414213562373095048801688724209698078569671875376948073176679737' },
+  { symbol: 'φ',  digits: '1618033988749894848204586834365638117720309179805762862135448622' },
+];
+
+// ─── Estado ──────────────────────────────────────────────────────────────────
+
+let selectedIdx  = 0;
+let currentIndex = 1;   // próximo índice a digitar
+let streak       = 0;
+let gameOver     = false;
+let highScores   = {};   // { 0: 5, 1: 12, ... }
+
+// ─── Persistência ────────────────────────────────────────────────────────────
+
+function loadHighScores() {
+  try {
+    const saved = localStorage.getItem('decimal_highscores');
+    if (saved) highScores = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function saveHighScore(idx, val) {
+  try {
+    highScores[idx] = val;
+    localStorage.setItem('decimal_highscores', JSON.stringify(highScores));
+  } catch(e) {}
+}
+
+function getBest(idx) {
+  return highScores[idx] || 0;
+}
+
+// ─── Lógica do jogo ──────────────────────────────────────────────────────────
+
+function checkDigit(char) {
+  if (gameOver) return;
+  const c = CONSTANTS[selectedIdx];
+  if (currentIndex >= c.digits.length) return;
+
+  const correct = c.digits[currentIndex];
+
+  if (char === correct) {
+    streak++;
+    currentIndex++;
+    const best = getBest(selectedIdx);
+    if (streak > best) saveHighScore(selectedIdx, streak);
+    renderDigits(true);
+    updateScoreboard();
+  } else {
+    gameOver = true;
+    document.getElementById('correct-digit-display').textContent = correct;
+    showGameOver();
+    renderDigits(false);
+    updateScoreboard();
+  }
+}
+
+function resetGame() {
+  currentIndex = 1;
+  streak       = 0;
+  gameOver     = false;
+  showInputState();
+  renderDigits(false);
+  updateScoreboard();
+  focusInput();
+}
+
+function switchConstant(idx) {
+  selectedIdx = idx;
+  // Update selector UI
+  document.querySelectorAll('.sel-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+  resetGame();
+}
+
+// ─── Input ───────────────────────────────────────────────────────────────────
+
+const realInput = document.getElementById('real-input');
+
+function focusInput() {
+  if (gameOver) return;
+  realInput.value = '';
+  realInput.focus();
+}
+
+realInput.addEventListener('input', () => {
+  const val = realInput.value;
+  if (!val) return;
+  const last = val[val.length - 1];
+  realInput.value = '';
+  if (/[0-9]/.test(last)) checkDigit(last);
+});
+
+// Also capture keyboard events for desktop
+realInput.addEventListener('keydown', (e) => {
+  if (/^[0-9]$/.test(e.key)) {
+    e.preventDefault();
+    checkDigit(e.key);
+  }
+});
+
+// Tap anywhere on display to focus input
+document.getElementById('display-wrap').addEventListener('click', focusInput);
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+
+function renderSelector() {
+  const el = document.getElementById('selector');
+  el.innerHTML = CONSTANTS.map((c, i) =>
+    `<button class="sel-btn ${i === selectedIdx ? 'active' : ''}"
+             onclick="switchConstant(${i})">${c.symbol}</button>`
+  ).join('');
+}
+
+const VISIBLE = 9;
+
+function renderDigits(justCorrect) {
+  const c      = CONSTANTS[selectedIdx];
+  const digits = c.digits;
+  const start  = Math.max(0, currentIndex - VISIBLE);
+  const slice  = digits.slice(start, currentIndex);
+
+  document.getElementById('constant-symbol').textContent = c.symbol;
+  document.getElementById('position-label').textContent =
+    `${currentIndex} / ${digits.length}`;
+
+  const row = document.getElementById('digits-row');
+  row.innerHTML = '';
+
+  for (let i = 0; i < slice.length; i++) {
+    const globalIdx = start + i;
+    const isRecent  = (i === slice.length - 1);
+    const digit     = slice[i];
+
+    // Ponto decimal após o primeiro dígito
+    if (globalIdx === 1 && start === 0) {
+      const dot = document.createElement('span');
+      dot.className = 'digit dot';
+      dot.textContent = '.';
+      row.appendChild(dot);
+    }
+
+    const span = document.createElement('span');
+    span.className = 'digit';
+    span.textContent = digit;
+
+    if (isRecent) {
+      span.classList.add('recent');
+      if (justCorrect) {
+        span.classList.add('correct-flash');
+        setTimeout(() => span.classList.remove('correct-flash'), 160);
+      }
+    } else {
+      // Opacidade progressiva
+      const opacity = 0.22 + (i / slice.length) * 0.52;
+      span.style.color = `rgba(255,255,255,${opacity.toFixed(2)})`;
+    }
+
+    row.appendChild(span);
+  }
+
+  // Cursor
+  const cursor = document.createElement('div');
+  cursor.id = 'cursor';
+  if (gameOver) cursor.classList.add('error');
+  row.appendChild(cursor);
+
+  // Shake on error
+  if (gameOver) {
+    const wrap = document.getElementById('display-wrap');
+    wrap.classList.remove('shaking');
+    void wrap.offsetWidth; // reflow
+    wrap.classList.add('shaking');
+    wrap.addEventListener('animationend', () => wrap.classList.remove('shaking'), { once: true });
+  }
+}
+
+function updateScoreboard() {
+  const c = CONSTANTS[selectedIdx];
+  document.getElementById('score-pos').textContent    = `${currentIndex}º`;
+  document.getElementById('score-streak').textContent = streak;
+  document.getElementById('score-best').textContent   = getBest(selectedIdx);
+  document.getElementById('score-best-label').textContent = `RECORDE ${c.symbol}`;
+}
+
+function showInputState() {
+  document.getElementById('input-state').style.display = 'flex';
+  document.getElementById('input-state').style.flexDirection = 'column';
+  document.getElementById('input-state').style.alignItems = 'center';
+  document.getElementById('gameover').classList.remove('visible');
+}
+
+function showGameOver() {
+  document.getElementById('input-state').style.display = 'none';
+  document.getElementById('gameover').classList.add('visible');
+}
+
+// ─── iOS Install Banner ───────────────────────────────────────────────────────
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  return window.navigator.standalone === true;
+}
+
+function dismissBanner() {
+  document.getElementById('install-banner').classList.remove('show');
+  try { localStorage.setItem('banner_dismissed', '1'); } catch(e) {}
+}
+
+function maybeShowBanner() {
+  if (!isIOS() || isStandalone()) return;
+  try { if (localStorage.getItem('banner_dismissed')) return; } catch(e) {}
+  setTimeout(() => {
+    document.getElementById('install-banner').classList.add('show');
+  }, 2000);
+}
+
+// ─── Service Worker ───────────────────────────────────────────────────────────
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+loadHighScores();
+renderSelector();
+renderDigits(false);
+updateScoreboard();
+maybeShowBanner();
+
+// Auto-focus on desktop
+if (!isIOS()) {
+  setTimeout(focusInput, 600);
+}
+</script>
+</body>
+</html>

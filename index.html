@@ -440,7 +440,6 @@
   <div id="action-area">
     <!-- Input state -->
     <div id="input-state">
-      <input id="real-input" type="number" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
       <div id="tap-target" onclick="focusInput()">
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
           <path d="M11 2v18M2 11h18" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round"/>
@@ -511,13 +510,13 @@ function loadHighScores() {
 
 function saveHighScore(idx, val) {
   try {
-    highScores[idx] = val;
+    highScores[String(idx)] = val;
     localStorage.setItem('decimal_highscores', JSON.stringify(highScores));
   } catch(e) {}
 }
 
 function getBest(idx) {
-  return highScores[idx] || 0;
+  return highScores[String(idx)] || 0;
 }
 
 // ─── Lógica do jogo ──────────────────────────────────────────────────────────
@@ -728,5 +727,6 @@ if (!isIOS()) {
   setTimeout(focusInput, 600);
 }
 </script>
+  <input id="real-input" type="number" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
 </body>
 </html>

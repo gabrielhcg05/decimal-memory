@@ -12,7 +12,7 @@
   <title>Decimal Memory</title>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=block');
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -215,17 +215,10 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 100%;
-      min-height: 110px;
+      min-height: 100px;
       justify-content: center;
       opacity: 0;
       animation: fadeUp 0.6s ease 0.4s forwards;
-    }
-
-    #input-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
 
     /* Hidden real input — captures keyboard on mobile */
@@ -234,7 +227,6 @@
       opacity: 0;
       width: 1px;
       height: 1px;
-      left: -9999px;
       pointer-events: none;
     }
 
@@ -425,7 +417,7 @@
 <body>
 
 <div id="app">
-  <div id="header">DECIMAL MEMORY V2 - Gabriel Haddad</div>
+  <div id="header">DECIMAL MEMORY - GH</div>
 
   <div id="selector">
     <!-- filled by JS -->
@@ -442,7 +434,7 @@
   <div id="action-area">
     <!-- Input state -->
     <div id="input-state">
-      <input id="real-input" type="number" inputmode="numeric" pattern="[0-9]*" autocomplete="off"> 
+      <input id="real-input" type="number" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
       <div id="tap-target" onclick="focusInput()">
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
           <path d="M11 2v18M2 11h18" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round"/>
@@ -513,13 +505,13 @@ function loadHighScores() {
 
 function saveHighScore(idx, val) {
   try {
-    highScores[String(idx)] = val;
+    highScores[idx] = val;
     localStorage.setItem('decimal_highscores', JSON.stringify(highScores));
   } catch(e) {}
 }
 
 function getBest(idx) {
-  return highScores[String(idx)] || 0;
+  return highScores[idx] || 0;
 }
 
 // ─── Lógica do jogo ──────────────────────────────────────────────────────────
@@ -677,7 +669,9 @@ function updateScoreboard() {
 }
 
 function showInputState() {
-  document.getElementById('input-state').style.display = '';
+  document.getElementById('input-state').style.display = 'flex';
+  document.getElementById('input-state').style.flexDirection = 'column';
+  document.getElementById('input-state').style.alignItems = 'center';
   document.getElementById('gameover').classList.remove('visible');
 }
 

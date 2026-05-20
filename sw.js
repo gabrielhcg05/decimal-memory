@@ -1,4 +1,4 @@
-const CACHE = 'decimal-memory-v2';
+const CACHE = 'decimal-memory-v3';
 const ASSETS = [
   './',
   './index.html',
